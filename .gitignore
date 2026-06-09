@@ -1,6 +1,7 @@
 node_modules/
 .expo/
 dist/
+coverage/
 npm-debug.*
 *.jks
 *.p8
@@ -9,7 +10,11 @@ npm-debug.*
 *.mobileprovision
 *.orig.*
 web-build/
-assets/
+# Keep brand assets (app icons, favicon, splash, logo source) in the repo so a
+# fresh clone builds; ignore anything else dropped into assets/.
+assets/*
+!assets/images/
+!assets/brand/
 metro-cache/
 .metro-cache-*/
 
@@ -27,5 +32,15 @@ android
 
 expo-env.d.ts
 
-# Claude workspace
+# Local environment files — never commit real secrets.
+# Ignore every .env variant (.env, .env.local, .env.seed.local, ...) but keep
+# the committed templates so contributors know which vars to set.
+.env
+.env.*
+!.env.example
+!.env.seed.example
+
+# Local agent / tooling config
 .claude
+.vercel
+.mcp.json

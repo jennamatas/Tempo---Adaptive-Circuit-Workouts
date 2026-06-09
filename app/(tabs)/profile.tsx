@@ -3,17 +3,18 @@ import { View, Text, ScrollView, Pressable, TextInput, Alert } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, radius } from '../lib/theme';
+import { colors, spacing, radius, centeredContent } from '../lib/theme';
 import { Card, Button, StatCard } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { fetchSessions } from '../lib/queries';
+import { saveLocalProfile } from '../lib/local';
 import { setBodyWeight, Level } from '../lib/store';
 
 const LEVELS: Level[] = ['beginner', 'intermediate', 'advanced'];
 
 export default function Profile() {
-  const { profile, userId, signOut, refreshProfile } = useAuth();
+  const { profile, userId, isGuest, signOut, refreshProfile } = useAuth();
   const [totals, setTotals] = useState({ workouts: 0, reps: 0, minutes: 0 });
   const [editing, setEditing] = useState(false);
   const [weight, setWeight] = useState(String(profile?.body_weight_kg ?? 75));
@@ -22,7 +23,7 @@ export default function Profile() {
 
   useFocusEffect(
     useCallback(() => {
-      fetchSessions(userId).then((s) => {
+      fetchSessions(userId, { guest: isGuest }).then((s) => {
         setTotals({
           workouts: s.length,
           reps: s.reduce((a, b) => a + (b.total_reps || 0), 0),
@@ -33,32 +34,39 @@ export default function Profile() {
         setWeight(String(profile.body_weight_kg));
         setLevel(profile.fitness_level as Level);
       }
-    }, [userId, profile])
+    }, [userId, isGuest, profile])
   );
 
   const save = async () => {
-    if (!userId) return;
     setSaving(true);
     const bw = parseFloat(weight) || 75;
     await setBodyWeight(bw);
-    await supabase.from('profiles').update({ body_weight_kg: bw, fitness_level: level }).eq('id', userId);
+    if (isGuest) {
+      await saveLocalProfile({ body_weight_kg: bw, fitness_level: level });
+    } else if (userId) {
+      await supabase.from('profiles').update({ body_weight_kg: bw, fitness_level: level }).eq('id', userId);
+    }
     await refreshProfile();
     setSaving(false);
     setEditing(false);
   };
 
   const confirmSignOut = () => {
-    Alert.alert('Sign out?', 'You can sign back in anytime.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          await signOut();
-          router.replace('/welcome');
+    Alert.alert(
+      isGuest ? 'Exit guest mode?' : 'Sign out?',
+      isGuest ? 'Your guest workouts on this device will be cleared.' : 'You can sign back in anytime.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: isGuest ? 'Exit' : 'Sign out',
+          style: 'destructive',
+          onPress: async () => {
+            await signOut();
+            router.replace('/welcome');
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const initials = (profile?.full_name || profile?.email || '?')
@@ -70,7 +78,7 @@ export default function Profile() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={[{ padding: spacing.lg, paddingBottom: 40 }, centeredContent]}>
         <Text style={{ color: colors.foreground, fontSize: 28, fontWeight: '700' }}>Profile</Text>
 
         {/* Identity */}
@@ -142,8 +150,20 @@ export default function Profile() {
           )}
         </Card>
 
+        {isGuest && (
+          <Card style={{ marginTop: spacing.lg, gap: 10 }}>
+            <Text style={{ color: colors.foreground, fontWeight: '700', fontSize: 16 }}>
+              You&apos;re exploring as a guest
+            </Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 13, lineHeight: 19 }}>
+              Create a free account to sync your workouts across devices and keep your history safe.
+            </Text>
+            <Button label="Create free account" onPress={() => router.push('/auth?mode=signup')} />
+          </Card>
+        )}
+
         <Button
-          label="Sign out"
+          label={isGuest ? 'Exit guest mode' : 'Sign out'}
           variant="outline"
           icon={<Ionicons name="log-out-outline" size={18} color={colors.foreground} />}
           onPress={confirmSignOut}

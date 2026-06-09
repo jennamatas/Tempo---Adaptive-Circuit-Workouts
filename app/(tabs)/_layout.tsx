@@ -6,7 +6,7 @@ import { colors } from '../lib/theme';
 import { useAuth } from '../lib/auth';
 
 export default function TabLayout() {
-  const { userId, profile, loading } = useAuth();
+  const { userId, isGuest, profile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -16,7 +16,7 @@ export default function TabLayout() {
     );
   }
 
-  if (!userId) return <Redirect href="/welcome" />;
+  if (!userId && !isGuest) return <Redirect href="/welcome" />;
   if (profile && !profile.onboarding_completed) return <Redirect href="/onboarding" />;
 
   return (

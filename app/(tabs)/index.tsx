@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, Pressable, Image } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, radius, phaseColor } from '../lib/theme';
+import { colors, spacing, radius, phaseColor, centeredContent } from '../lib/theme';
 import { brand } from '../lib/brand';
 import { Logo } from '../components/Logo';
 import { Card, StatCard, PhaseBadge, Button, SectionTitle } from '../components/ui';
@@ -13,18 +14,18 @@ import { SessionRow } from '../lib/types';
 import { useAuth } from '../lib/auth';
 
 export default function Dashboard() {
-  const { userId, profile } = useAuth();
+  const { userId, isGuest, profile } = useAuth();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [prs, setPrs] = useState<PersonalRecord[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const s = await fetchSessions(userId);
+    const s = await fetchSessions(userId, { guest: isGuest });
     setSessions(s);
     setStats(computeStats(s));
     setPrs(computePersonalRecords(s));
-  }, [userId]);
+  }, [userId, isGuest]);
 
 
   useFocusEffect(
@@ -55,7 +56,7 @@ export default function Dashboard() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}
+        contentContainerStyle={[{ padding: spacing.lg, paddingBottom: 40 }, centeredContent]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* Header */}

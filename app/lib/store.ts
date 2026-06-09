@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 let AsyncStorage: any = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   AsyncStorage = require('@react-native-async-storage/async-storage').default;
 } catch (e) {
   AsyncStorage = null;
@@ -10,7 +10,7 @@ try {
 
 const memory: Record<string, string> = {};
 
-async function getItem(key: string): Promise<string | null> {
+export async function getItem(key: string): Promise<string | null> {
   if (AsyncStorage) {
     try {
       return await AsyncStorage.getItem(key);
@@ -21,11 +21,22 @@ async function getItem(key: string): Promise<string | null> {
   return memory[key] ?? null;
 }
 
-async function setItem(key: string, value: string): Promise<void> {
+export async function setItem(key: string, value: string): Promise<void> {
   memory[key] = value;
   if (AsyncStorage) {
     try {
       await AsyncStorage.setItem(key, value);
+    } catch {
+      /* noop */
+    }
+  }
+}
+
+export async function removeItem(key: string): Promise<void> {
+  delete memory[key];
+  if (AsyncStorage) {
+    try {
+      await AsyncStorage.removeItem(key);
     } catch {
       /* noop */
     }

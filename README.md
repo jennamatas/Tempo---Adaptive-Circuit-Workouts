@@ -34,7 +34,7 @@ Built with **Expo (React Native)** + **expo-router** + **Supabase**. Runs on iOS
 2. (Optional) Point at your own Supabase project
 
    ```bash
-   cp .env.example .env
+   cp .env.example .env.local
    # fill in EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY
    ```
 
@@ -46,6 +46,26 @@ Built with **Expo (React Native)** + **expo-router** + **Supabase**. Runs on iOS
    npx expo start          # then press i / a / w for iOS, Android, or web
    # or: npm run ios | npm run android | npm run web
    ```
+
+## Scripts
+
+```bash
+npm run lint        # ESLint (eslint-config-expo)
+npm run typecheck   # tsc --noEmit (strict mode)
+npm test            # Jest unit tests (jest-expo)
+npm run build       # static web export
+```
+
+## Environment & secrets
+
+Env files follow standard hygiene — only `EXPO_PUBLIC_*` vars are inlined into the client bundle, and the anon key is public by design (Row Level Security protects data):
+
+| File | Committed? | Purpose |
+|------|-----------|---------|
+| `.env.example` | ✅ template | client vars (`EXPO_PUBLIC_*`) |
+| `.env.local` | 🚫 git-ignored | real client values for local dev |
+| `.env.seed.example` | ✅ template | server-only seed/admin vars |
+| `.env.seed.local` | 🚫 git-ignored | **server secrets** (service-role key, Postgres URL) — never shipped to a client, never loaded by the app |
 
 ## Try it
 
@@ -78,6 +98,12 @@ app/
   (tabs)/                    Home, Workout, History, Library, Profile
   exercise/[slug].tsx        exercise detail
   components/                Logo, ui, RingTimer, BarChart
-  lib/                       supabase, auth, brand, theme, generate, queries, store, types
+  lib/
+    supabase, auth, brand, theme, store, types
+    circuit.ts               pure generator logic (no network) — unit-tested
+    generate.ts              fetch pool + delegate to circuit.ts
+    stats.ts                 pure dashboard/PR aggregation — unit-tested
+    queries.ts               fetch sessions + re-export stats
+__tests__/                   Jest unit tests (circuit, stats)
 DB/database.sql              schema + seed
 ```

@@ -1,5 +1,12 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from './supabase';
+import {
+  isGuestActive,
+  getLocalProfile,
+  startGuest,
+  endGuest,
+  LocalProfile,
+} from './local';
 
 export type Profile = {
   id: string;
@@ -14,9 +21,11 @@ export type Profile = {
 type AuthState = {
   userId: string | null;
   profile: Profile | null;
+  isGuest: boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  continueAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -24,10 +33,27 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
+const localToProfile = (lp: LocalProfile): Profile => ({
+  id: 'guest',
+  email: null,
+  full_name: lp.full_name,
+  fitness_level: lp.fitness_level,
+  body_weight_kg: lp.body_weight_kg,
+  weekly_goal: lp.weekly_goal,
+  onboarding_completed: lp.onboarding_completed,
+});
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Mirror of `isGuest` readable inside the (stale-closure) auth-state listener.
+  const isGuestRef = useRef(false);
+  useEffect(() => {
+    isGuestRef.current = isGuest;
+  }, [isGuest]);
 
   const loadProfile = useCallback(async (uid: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', uid).single();
@@ -46,18 +72,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const init = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     const uid = data.session?.user.id ?? null;
-    setUserId(uid);
-    if (uid) await loadProfile(uid);
+    if (uid) {
+      setUserId(uid);
+      await loadProfile(uid);
+    } else if (await isGuestActive()) {
+      setIsGuest(true);
+      setProfile(localToProfile(await getLocalProfile()));
+    }
     setLoading(false);
   }, [loadProfile]);
 
   useEffect(() => {
     init();
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       const uid = session?.user.id ?? null;
-      setUserId(uid);
-      if (uid) loadProfile(uid);
-      else setProfile(null);
+      if (uid) {
+        setIsGuest(false);
+        setUserId(uid);
+        loadProfile(uid);
+      } else if (event === 'SIGNED_OUT') {
+        // Don't clobber a guest session that init() established.
+        setUserId(null);
+        if (!isGuestRef.current) setProfile(null);
+      }
     });
     return () => {
       sub.subscription.unsubscribe();
@@ -90,9 +127,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const continueAsGuest = async () => {
+    await startGuest();
+    setProfile(localToProfile(await getLocalProfile()));
+    setIsGuest(true);
+  };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    if (isGuest) {
+      await endGuest();
+      setIsGuest(false);
+    } else {
+      await supabase.auth.signOut();
+    }
     setProfile(null);
     setUserId(null);
   };
@@ -103,11 +150,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshProfile = async () => {
-    if (userId) await loadProfile(userId);
+    if (isGuest) setProfile(localToProfile(await getLocalProfile()));
+    else if (userId) await loadProfile(userId);
   };
 
   return (
-    <AuthContext.Provider value={{ userId, profile, loading, signIn, signUp, signOut, resetPassword, refreshProfile }}>
+    <AuthContext.Provider
+      value={{
+        userId,
+        profile,
+        isGuest,
+        loading,
+        signIn,
+        signUp,
+        continueAsGuest,
+        signOut,
+        resetPassword,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
-import { colors, radius, spacing } from '../lib/theme';
-import { phaseColor } from '../lib/theme';
+import { colors, radius, spacing, phaseColor } from '../lib/theme';
 import { PHASES, PhaseKey } from '../lib/brand';
 
 export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {

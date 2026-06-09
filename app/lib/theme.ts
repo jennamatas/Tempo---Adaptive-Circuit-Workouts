@@ -38,3 +38,13 @@ export const fonts = {
   display: 'System',
   body: 'System',
 };
+
+// Centers screen content within a comfortable column on wide (desktop/tablet)
+// viewports while staying full-width on phones. Spread into a ScrollView's
+// contentContainerStyle.
+export const screenMaxWidth = 720;
+export const centeredContent = {
+  width: '100%',
+  maxWidth: screenMaxWidth,
+  alignSelf: 'center',
+} as const;

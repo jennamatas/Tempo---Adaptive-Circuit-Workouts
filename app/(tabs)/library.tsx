@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, radius } from '../lib/theme';
+import { colors, spacing, radius, centeredContent } from '../lib/theme';
 import { PhaseBadge } from '../components/ui';
 import { supabase } from '../lib/supabase';
 import { Exercise } from '../lib/types';
@@ -32,7 +33,7 @@ export default function Library() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={[{ padding: spacing.lg, paddingBottom: 40 }, centeredContent]}>
         <Text style={{ color: colors.foreground, fontSize: 28, fontWeight: '700' }}>Exercise library</Text>
         <Text style={{ color: colors.mutedForeground, fontSize: 15, marginTop: 4 }}>{exercises.length} moves</Text>
 
