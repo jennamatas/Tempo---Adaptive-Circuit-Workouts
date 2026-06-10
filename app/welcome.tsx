@@ -12,11 +12,16 @@ import { useAuth } from './lib/auth';
 const HERO = 'https://d64gsuwffb70l.cloudfront.net/6a27155c018980ba304cb21b_1780946381703_0626b81c.jpg';
 
 export default function Welcome() {
-  const { userId, profile, loading } = useAuth();
+  const { userId, isGuest, profile, loading, continueAsGuest } = useAuth();
 
-  if (!loading && userId) {
+  if (!loading && (userId || isGuest)) {
     return <Redirect href={profile && !profile.onboarding_completed ? '/onboarding' : '/(tabs)'} />;
   }
+
+  const guest = async () => {
+    await continueAsGuest();
+    router.replace('/(tabs)');
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -52,6 +57,16 @@ export default function Welcome() {
               onPress={() => router.push('/auth?mode=login')}
               style={{ marginTop: 6 }}
             />
+            <Button
+              label="Explore as guest"
+              variant="ghost"
+              icon={<Ionicons name="eye-outline" size={18} color={colors.foreground} />}
+              onPress={guest}
+              style={{ marginTop: 2 }}
+            />
+            <Text style={{ color: colors.subtleForeground, fontSize: 12, textAlign: 'center', marginTop: 10 }}>
+              No account needed. Your progress stays on this device.
+            </Text>
           </View>
         </SafeAreaView>
       </ImageBackground>

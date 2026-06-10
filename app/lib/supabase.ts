@@ -14,7 +14,6 @@ const supabaseKey =
 // Provide a no-op WebSocket during Node build (realtime is unused here)
 if (typeof (globalThis as any).WebSocket === 'undefined') {
   (globalThis as any).WebSocket = class {
-    constructor() {}
     close() {}
     addEventListener() {}
     removeEventListener() {}
@@ -39,7 +38,7 @@ if (typeof window === 'undefined') {
   };
 } else {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     storage = require('@react-native-async-storage/async-storage').default;
   } catch (e) {
     storage = undefined;

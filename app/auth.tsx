@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, Scrol
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, radius } from './lib/theme';
+import { colors, spacing, radius, centeredForm } from './lib/theme';
 import { Logo } from './components/Logo';
 import { Button } from './components/ui';
 import { useAuth } from './lib/auth';
@@ -43,7 +43,7 @@ export default function Auth() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={{ padding: spacing.lg, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[{ padding: spacing.lg, flexGrow: 1 }, centeredForm]} keyboardShouldPersistTaps="handled">
           <Pressable onPress={() => router.back()} hitSlop={12} style={{ marginBottom: 24 }}>
             <Ionicons name="chevron-back" size={28} color={colors.mutedForeground} />
           </Pressable>

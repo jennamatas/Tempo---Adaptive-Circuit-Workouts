@@ -1,12 +1,14 @@
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Tabs, Redirect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../lib/theme';
+import { colors, desktopBreakpoint } from '../lib/theme';
 import { useAuth } from '../lib/auth';
+import { NavBar } from '../components/NavBar';
 
 export default function TabLayout() {
-  const { userId, profile, loading } = useAuth();
+  const { userId, isGuest, profile, loading } = useAuth();
+  const { width } = useWindowDimensions();
+  const desktop = width >= desktopBreakpoint;
 
   if (loading) {
     return (
@@ -16,46 +18,24 @@ export default function TabLayout() {
     );
   }
 
-  if (!userId) return <Redirect href="/welcome" />;
+  if (!userId && !isGuest) return <Redirect href="/welcome" />;
   if (profile && !profile.onboarding_completed) return <Redirect href="/onboarding" />;
 
   return (
     <Tabs
+      tabBar={(props) => <NavBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.subtleForeground,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 88,
-          paddingTop: 8,
-          paddingBottom: 28,
-        },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        // Sidebar on the left for desktop/tablet, bottom bar on phones.
+        tabBarPosition: desktop ? 'left' : 'bottom',
+        sceneStyle: { backgroundColor: colors.background },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} /> }}
-      />
-      <Tabs.Screen
-        name="workout"
-        options={{ title: 'Workout', tabBarIcon: ({ color, size }) => <Ionicons name="flash" size={size} color={color} /> }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{ title: 'History', tabBarIcon: ({ color, size }) => <Ionicons name="time" size={size} color={color} /> }}
-      />
-      <Tabs.Screen
-        name="library"
-        options={{ title: 'Library', tabBarIcon: ({ color, size }) => <Ionicons name="grid" size={size} color={color} /> }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{ title: 'Profile', tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} /> }}
-      />
+      <Tabs.Screen name="index" options={{ title: 'Home' }} />
+      <Tabs.Screen name="workout" options={{ title: 'Workout' }} />
+      <Tabs.Screen name="history" options={{ title: 'History' }} />
+      <Tabs.Screen name="library" options={{ title: 'Library' }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
   );
 }

@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, radius, phaseColor } from '../lib/theme';
+import { colors, spacing, radius, phaseColor, centeredContent } from '../lib/theme';
 import { Card, PhaseBadge } from '../components/ui';
 import { fetchSessions } from '../lib/queries';
 import { SessionRow } from '../lib/types';
@@ -13,15 +14,15 @@ import { useAuth } from '../lib/auth';
 const FILTERS = ['all', 'foundation', 'build', 'peak'];
 
 export default function History() {
-  const { userId } = useAuth();
+  const { userId, isGuest } = useAuth();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [filter, setFilter] = useState('all');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    setSessions(await fetchSessions(userId));
-  }, [userId]);
+    setSessions(await fetchSessions(userId, { guest: isGuest }));
+  }, [userId, isGuest]);
 
   useFocusEffect(
     useCallback(() => {
@@ -34,7 +35,7 @@ export default function History() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}
+        contentContainerStyle={[{ padding: spacing.lg, paddingBottom: 40 }, centeredContent]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={colors.primary} />}
       >
         <Text style={{ color: colors.foreground, fontSize: 28, fontWeight: '700' }}>History</Text>

@@ -1,0 +1,16 @@
+# Never upload these to Vercel.
+# Secrets (the build only needs the public EXPO_PUBLIC_* vars, and supabase.ts
+# falls back to the demo backend when they're unset).
+.env
+.env.*
+
+# Local / generated
+.git
+.claude
+.vercel
+.expo
+node_modules
+dist
+coverage
+ios
+android

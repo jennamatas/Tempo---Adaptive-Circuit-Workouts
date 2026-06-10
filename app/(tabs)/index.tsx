@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, Pressable, Image } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, Pressable, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, radius, phaseColor } from '../lib/theme';
+import { colors, spacing, radius, phaseColor, centeredWide, desktopBreakpoint } from '../lib/theme';
 import { brand } from '../lib/brand';
 import { Logo } from '../components/Logo';
 import { Card, StatCard, PhaseBadge, Button, SectionTitle } from '../components/ui';
@@ -13,18 +14,20 @@ import { SessionRow } from '../lib/types';
 import { useAuth } from '../lib/auth';
 
 export default function Dashboard() {
-  const { userId, profile } = useAuth();
+  const { userId, isGuest, profile } = useAuth();
+  const { width } = useWindowDimensions();
+  const wide = width >= desktopBreakpoint;
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [prs, setPrs] = useState<PersonalRecord[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const s = await fetchSessions(userId);
+    const s = await fetchSessions(userId, { guest: isGuest });
     setSessions(s);
     setStats(computeStats(s));
     setPrs(computePersonalRecords(s));
-  }, [userId]);
+  }, [userId, isGuest]);
 
 
   useFocusEffect(
@@ -55,7 +58,7 @@ export default function Dashboard() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40 }}
+        contentContainerStyle={[{ padding: spacing.lg, paddingBottom: 40 }, centeredWide]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* Header */}
@@ -85,20 +88,23 @@ export default function Dashboard() {
           </Card>
         ) : (
           <>
-            {/* Stat cards */}
-            <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl }}>
-              <StatCard
-                label="This week"
-                value={stats?.thisWeek ?? 0}
-                unit={`/ ${profile?.weekly_goal ?? 3} goal`}
-                accent={colors.primary}
-              />
-              <StatCard label="Streak" value={stats?.streak ?? 0} unit="days" accent={colors.coral} />
-            </View>
-            <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.md }}>
-              <StatCard label="Workouts" value={stats?.totalWorkouts ?? 0} />
-              <StatCard label="Minutes" value={stats?.totalMinutes ?? 0} />
-            </View>
+            {/* Stat cards — 4 across on desktop, 2×2 on mobile */}
+            {(() => {
+              const cards = [
+                <StatCard key="week" label="This week" value={stats?.thisWeek ?? 0} unit={`/ ${profile?.weekly_goal ?? 3} goal`} accent={colors.primary} />,
+                <StatCard key="streak" label="Streak" value={stats?.streak ?? 0} unit="days" accent={colors.coral} />,
+                <StatCard key="workouts" label="Workouts" value={stats?.totalWorkouts ?? 0} />,
+                <StatCard key="minutes" label="Minutes" value={stats?.totalMinutes ?? 0} />,
+              ];
+              return wide ? (
+                <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl }}>{cards}</View>
+              ) : (
+                <>
+                  <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl }}>{cards.slice(0, 2)}</View>
+                  <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.md }}>{cards.slice(2)}</View>
+                </>
+              );
+            })()}
 
             {/* CTA */}
             <Button
@@ -108,22 +114,22 @@ export default function Dashboard() {
               style={{ marginTop: spacing.lg }}
             />
 
-            {/* Weekly volume */}
-            <Card style={{ marginTop: spacing.xl }}>
-              <SectionTitle>Weekly volume</SectionTitle>
-              {stats && <BarChart data={stats.weekly.map((w) => ({ label: w.label, value: w.workouts }))} />}
-            </Card>
-
-            {/* Reps over time */}
-            <Card style={{ marginTop: spacing.lg }}>
-              <SectionTitle>Reps over time</SectionTitle>
-              {stats && (
-                <BarChart
-                  data={stats.weekly.map((w) => ({ label: w.label, value: w.reps }))}
-                  color={colors.blue}
-                />
-              )}
-            </Card>
+            {/* Weekly volume + Reps over time — side by side on desktop */}
+            <View style={{ flexDirection: wide ? 'row' : 'column', gap: wide ? spacing.lg : 0, marginTop: spacing.xl }}>
+              <Card style={wide ? { flex: 1 } : { marginBottom: spacing.lg }}>
+                <SectionTitle>Weekly volume</SectionTitle>
+                {stats && <BarChart data={stats.weekly.map((w) => ({ label: w.label, value: w.workouts }))} />}
+              </Card>
+              <Card style={wide ? { flex: 1 } : undefined}>
+                <SectionTitle>Reps over time</SectionTitle>
+                {stats && (
+                  <BarChart
+                    data={stats.weekly.map((w) => ({ label: w.label, value: w.reps }))}
+                    color={colors.blue}
+                  />
+                )}
+              </Card>
+            </View>
 
             {/* Body part balance */}
             {bpData.length > 0 && (

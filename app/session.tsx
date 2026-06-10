@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, Pressable, Image, Alert, Platform } from 'react-native';
+import { View, Text, Pressable, Alert, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
@@ -12,8 +13,9 @@ import { getActiveWorkout } from './lib/activeWorkout';
 import { estimateCalories } from './lib/generate';
 import { getBodyWeight } from './lib/store';
 import { supabase } from './lib/supabase';
+import { addLocalSession } from './lib/local';
 import { brand } from './lib/brand';
-import { GeneratedWorkout } from './lib/types';
+import { GeneratedWorkout, SessionRow } from './lib/types';
 import { useAuth } from './lib/auth';
 
 type Phase = 'ready' | 'work' | 'rest' | 'done';
@@ -30,7 +32,7 @@ function buzz(kind: 'tick' | 'transition' | 'finish') {
 }
 
 export default function Session() {
-  const { userId } = useAuth();
+  const { userId, isGuest } = useAuth();
   const workout = getActiveWorkout();
 
   // Keep the screen awake for the duration of the circuit.
@@ -43,6 +45,7 @@ export default function Session() {
   const [paused, setPaused] = useState(false);
   const [repInput, setRepInput] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const repInputRef = useRef(0);
   useEffect(() => { repInputRef.current = repInput; }, [repInput]);
@@ -135,6 +138,8 @@ export default function Session() {
       setPhase('work');
       setupInterval(workout.work);
     }
+    // `finish` is defined after `advance`; including it would create a TDZ cycle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, workout, exIndex, round, total, repInput, setupInterval]);
 
   const finish = useCallback(async () => {
@@ -156,26 +161,50 @@ export default function Session() {
       reps: repLog.current.filter((r) => r.name === we.exercise.name).reduce((a, b) => a + b.reps, 0),
       image_url: we.exercise.image_url,
     }));
+    const completedAt = new Date().toISOString();
+    const caloriesEstimate = Math.round(calories * 10) / 10;
     try {
       if (userId) {
-        await supabase.from('workout_sessions').insert({
+        const { error } = await supabase.from('workout_sessions').insert({
           user_id: userId,
           phase: workout.phase,
           started_at: startedAt.current,
-          completed_at: new Date().toISOString(),
+          completed_at: completedAt,
           duration_seconds: durationSeconds,
           total_reps: totalReps,
           rounds_completed: workout.rounds,
-          calories_estimate: Math.round(calories * 10) / 10,
+          calories_estimate: caloriesEstimate,
           status: 'completed',
           exercises: exSummary,
         });
+        // Supabase surfaces DB/RLS failures on `error` rather than throwing.
+        if (error) setSaveError(true);
+      } else if (isGuest) {
+        // Guests persist locally on the device.
+        const row: SessionRow = {
+          id: `guest-${Date.now()}`,
+          device_id: 'guest',
+          phase: workout.phase,
+          started_at: startedAt.current,
+          completed_at: completedAt,
+          duration_seconds: durationSeconds,
+          total_reps: totalReps,
+          rounds_completed: workout.rounds,
+          calories_estimate: caloriesEstimate,
+          status: 'completed',
+          exercises: exSummary,
+        };
+        await addLocalSession(row);
+      } else {
+        // No signed-in user — the session can't be persisted.
+        setSaveError(true);
       }
     } catch (e) {
-      // ignore network error, still show summary
+      // Network or unexpected failure — still show the summary, but tell the user.
+      setSaveError(true);
     }
     setSaving(false);
-  }, [workout, total, userId]);
+  }, [workout, total, userId, isGuest]);
 
 
   const quit = () => {
@@ -217,7 +246,15 @@ export default function Session() {
           <SummaryStat label="Rounds" value={workout.rounds} />
           <SummaryStat label="Reps" value={totalReps} />
         </View>
-        <Button label={saving ? 'Saving...' : 'Done'} loading={saving} onPress={() => router.replace('/(tabs)')} style={{ marginTop: 32 }} />
+        {!saving && saveError ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20 }}>
+            <Ionicons name="cloud-offline" size={16} color={colors.warning} />
+            <Text style={{ color: colors.warning, fontSize: 13, textAlign: 'center' }}>
+              Couldn&apos;t save this session. Check your connection.
+            </Text>
+          </View>
+        ) : null}
+        <Button label={saving ? 'Saving...' : 'Done'} loading={saving} onPress={() => router.replace('/(tabs)')} style={{ marginTop: saveError ? 16 : 32 }} />
       </SafeAreaView>
     );
   }
