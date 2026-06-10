@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Tempo: Adaptive Circuit Workouts",
+    "description": "Adaptive circuit workouts that adjust to your pace. Build, run, and track HIIT and strength circuits with smart rest timers, exercise swaps, and progress history.",
     "slug": "fitness-workout-progress-103",
     "version": "1.0.0",
     "orientation": "portrait",

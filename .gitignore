@@ -44,3 +44,4 @@ expo-env.d.ts
 .claude
 .vercel
 .mcp.json
+.env.local

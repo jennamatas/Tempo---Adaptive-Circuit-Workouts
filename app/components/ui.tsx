@@ -1,7 +1,10 @@
 import React from 'react';
 import { View, Text, Pressable, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { colors, radius, spacing, phaseColor } from '../lib/theme';
 import { PHASES, PhaseKey } from '../lib/brand';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
   return (
@@ -96,11 +99,19 @@ export function Button({
       ? '#fff'
       : colors.foreground;
   const borderColor = variant === 'outline' ? colors.border : 'transparent';
+  const scale = useSharedValue(1);
+  const aStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       disabled={loading}
-      style={({ pressed }) => [
+      onPressIn={() => {
+        scale.value = withSpring(0.96, { damping: 15, stiffness: 280 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 13, stiffness: 200 });
+      }}
+      style={[
         {
           backgroundColor: bg,
           borderColor,
@@ -112,8 +123,8 @@ export function Button({
           alignItems: 'center',
           justifyContent: 'center',
           gap: 8,
-          opacity: pressed ? 0.85 : 1,
         },
+        aStyle,
         style,
       ]}
     >
@@ -125,7 +136,7 @@ export function Button({
           <Text style={{ color: fg, fontSize: 16, fontWeight: '700' }}>{label}</Text>
         </>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

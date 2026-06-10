@@ -4,8 +4,10 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, spacing, radius, centeredWide, desktopBreakpoint } from '../lib/theme';
 import { PhaseBadge } from '../components/ui';
+import { PressableScale } from '../components/Motion';
 import { supabase } from '../lib/supabase';
 import { Exercise } from '../lib/types';
 
@@ -80,23 +82,29 @@ export default function Library() {
 
         {/* Grid */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: spacing.lg }}>
-          {filtered.map((e) => (
-            <Pressable key={e.id} onPress={() => router.push(`/exercise/${e.slug}`)} style={{ width: cardWidth, marginBottom: 14 }}>
-              <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
-                {e.image_url ? (
-                  <Image source={{ uri: e.image_url }} style={{ width: '100%', height: 110 }} />
-                ) : (
-                  <View style={{ width: '100%', height: 110, backgroundColor: colors.surface2 }} />
-                )}
-                <View style={{ padding: 10 }}>
-                  <Text style={{ color: colors.foreground, fontWeight: '700', fontSize: 14 }} numberOfLines={1}>{e.name}</Text>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 2 }}>{e.body_part}</Text>
-                  <View style={{ marginTop: 8 }}>
-                    <PhaseBadge phase={e.phase} small />
+          {filtered.map((e, i) => (
+            <Animated.View
+              key={e.id}
+              entering={FadeInDown.delay(Math.min(i * 22, 500)).duration(420)}
+              style={{ width: cardWidth, marginBottom: 14 }}
+            >
+              <PressableScale onPress={() => router.push(`/exercise/${e.slug}`)}>
+                <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
+                  {e.image_url ? (
+                    <Image source={{ uri: e.image_url }} style={{ width: '100%', height: 110 }} transition={400} />
+                  ) : (
+                    <View style={{ width: '100%', height: 110, backgroundColor: colors.surface2 }} />
+                  )}
+                  <View style={{ padding: 10 }}>
+                    <Text style={{ color: colors.foreground, fontWeight: '700', fontSize: 14 }} numberOfLines={1}>{e.name}</Text>
+                    <Text style={{ color: colors.mutedForeground, fontSize: 12, marginTop: 2 }}>{e.body_part}</Text>
+                    <View style={{ marginTop: 8 }}>
+                      <PhaseBadge phase={e.phase} small />
+                    </View>
                   </View>
                 </View>
-              </View>
-            </Pressable>
+              </PressableScale>
+            </Animated.View>
           ))}
         </View>
       </ScrollView>

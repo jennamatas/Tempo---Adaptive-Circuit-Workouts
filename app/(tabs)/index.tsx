@@ -7,8 +7,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, phaseColor, centeredWide, desktopBreakpoint } from '../lib/theme';
 import { brand } from '../lib/brand';
 import { Logo } from '../components/Logo';
+import { Seo } from '../components/Seo';
 import { Card, StatCard, PhaseBadge, Button, SectionTitle } from '../components/ui';
 import { BarChart, HBar } from '../components/BarChart';
+import { FadeUp, PressableScale, Animated } from '../components/Motion';
+import { FadeInDown } from 'react-native-reanimated';
 import { fetchSessions, computeStats, computePersonalRecords, DashboardStats, PersonalRecord } from '../lib/queries';
 import { SessionRow } from '../lib/types';
 import { useAuth } from '../lib/auth';
@@ -57,6 +60,11 @@ export default function Dashboard() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+      <Seo
+        title="Dashboard"
+        path="/"
+        description="Your Tempo dashboard — track circuit-workout streaks, personal records, and weekly progress at a glance."
+      />
       <ScrollView
         contentContainerStyle={[{ padding: spacing.lg, paddingBottom: 40 }, centeredWide]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
@@ -66,17 +74,19 @@ export default function Dashboard() {
           <Logo size={26} />
         </View>
 
-        <Text style={{ color: colors.foreground, fontSize: 28, fontWeight: '700' }}>
-          {profile?.full_name ? `Hey, ${profile.full_name.split(' ')[0]}` : 'Welcome back'}
-        </Text>
-
-        {stats && stats.streak > 0 ? (
-          <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600', marginTop: 4 }}>
-            {brand.copy.streakNudge(stats.streak)}
+        <FadeUp delay={60}>
+          <Text style={{ color: colors.foreground, fontSize: 28, fontWeight: '700' }}>
+            {profile?.full_name ? `Hey, ${profile.full_name.split(' ')[0]}` : 'Welcome back'}
           </Text>
-        ) : (
-          <Text style={{ color: colors.mutedForeground, fontSize: 15, marginTop: 4 }}>{brand.oneLiner}</Text>
-        )}
+
+          {stats && stats.streak > 0 ? (
+            <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600', marginTop: 4 }}>
+              {brand.copy.streakNudge(stats.streak)}
+            </Text>
+          ) : (
+            <Text style={{ color: colors.mutedForeground, fontSize: 15, marginTop: 4 }}>{brand.oneLiner}</Text>
+          )}
+        </FadeUp>
 
         {empty ? (
           <Card style={{ marginTop: spacing.xl, alignItems: 'center', paddingVertical: 40 }}>
@@ -177,8 +187,9 @@ export default function Dashboard() {
                 <Text style={{ color: colors.primary, fontWeight: '600' }}>See all</Text>
               </Pressable>
             </View>
-            {sessions.slice(0, 4).map((s) => (
-              <Pressable key={s.id} onPress={() => router.push('/history')}>
+            {sessions.slice(0, 4).map((s, i) => (
+              <Animated.View key={s.id} entering={FadeInDown.delay(i * 60).duration(420)}>
+                <PressableScale onPress={() => router.push('/history')}>
                 <Card style={{ marginBottom: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                   <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: (phaseColor[s.phase] || colors.primary) + '22', alignItems: 'center', justifyContent: 'center' }}>
                     <Ionicons name="checkmark" size={22} color={phaseColor[s.phase] || colors.primary} />
@@ -193,7 +204,8 @@ export default function Dashboard() {
                   </View>
                   <PhaseBadge phase={s.phase} small />
                 </Card>
-              </Pressable>
+                </PressableScale>
+              </Animated.View>
             ))}
           </>
         )}
