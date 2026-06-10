@@ -7,11 +7,13 @@ import { colors, spacing, radius, centeredForm } from './lib/theme';
 import { Logo } from './components/Logo';
 import { Button } from './components/ui';
 import { useAuth } from './lib/auth';
+import { usePostHog } from 'posthog-react-native';
 
 export default function Auth() {
   const params = useLocalSearchParams<{ mode?: string }>();
   const [mode, setMode] = useState<'login' | 'signup'>(params.mode === 'signup' ? 'signup' : 'login');
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, userId } = useAuth();
+  const posthog = usePostHog();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -28,12 +30,17 @@ export default function Auth() {
     try {
       if (mode === 'signup') {
         await signUp(email, password, name.trim());
+        posthog.capture('signed_up', { method: 'email', name: name.trim() });
         router.replace('/onboarding');
       } else {
         await signIn(email, password);
+        posthog.capture('signed_in', { method: 'email' });
         router.replace('/(tabs)');
       }
     } catch (e: any) {
+      posthog.captureException(e instanceof Error ? e : new Error(e?.message || 'Auth error'), {
+        mode,
+      });
       setError(e?.message || 'Something went wrong. Try again.');
     } finally {
       setLoading(false);

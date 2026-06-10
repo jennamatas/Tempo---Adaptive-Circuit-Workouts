@@ -1,25 +1,33 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import { colors } from '../lib/theme';
 
-export function RingMark({ size = 32 }: { size?: number }) {
+export function RingMark({ size = 32, spin = true }: { size?: number; spin?: boolean }) {
   const stroke = Math.max(3, size * 0.16);
+  const rot = useSharedValue(0);
+  useEffect(() => {
+    if (spin) rot.value = withRepeat(withTiming(360, { duration: 7000, easing: Easing.linear }), -1, false);
+  }, [spin, rot]);
+  const aStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${-45 + rot.value}deg` }] }));
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        borderWidth: stroke,
-        borderColor: colors.primary,
-        borderRightColor: colors.surface2,
-        transform: [{ rotate: '-45deg' }],
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+    <Animated.View
+      style={[
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: stroke,
+          borderColor: colors.primary,
+          borderRightColor: colors.surface2,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        aStyle,
+      ]}
     >
-      <View style={{ width: size * 0.18, height: size * 0.18, borderRadius: size, backgroundColor: colors.primary, transform: [{ rotate: '45deg' }] }} />
-    </View>
+      <View style={{ width: size * 0.18, height: size * 0.18, borderRadius: size, backgroundColor: colors.primary }} />
+    </Animated.View>
   );
 }
 

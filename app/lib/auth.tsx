@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { usePostHog } from 'posthog-react-native';
 import { supabase } from './supabase';
 import {
   isGuestActive,
@@ -44,6 +45,7 @@ const localToProfile = (lp: LocalProfile): Profile => ({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const posthog = usePostHog();
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isGuest, setIsGuest] = useState(false);
@@ -75,12 +77,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (uid) {
       setUserId(uid);
       await loadProfile(uid);
+      posthog.identify(uid, {
+        $set: { email: data.session?.user.email ?? null },
+      });
     } else if (await isGuestActive()) {
       setIsGuest(true);
       setProfile(localToProfile(await getLocalProfile()));
     }
     setLoading(false);
-  }, [loadProfile]);
+  }, [loadProfile, posthog]);
 
   useEffect(() => {
     init();
@@ -90,6 +95,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsGuest(false);
         setUserId(uid);
         loadProfile(uid);
+        posthog.identify(uid, {
+          $set: { email: session?.user.email ?? null },
+        });
       } else if (event === 'SIGNED_OUT') {
         // Don't clobber a guest session that init() established.
         setUserId(null);
@@ -99,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       sub.subscription.unsubscribe();
     };
-  }, [init, loadProfile]);
+  }, [init, loadProfile, posthog]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
@@ -124,6 +132,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.from('profiles').upsert({ id: uid, email: email.trim(), full_name: fullName });
       await loadProfile(uid);
       setUserId(uid);
+      posthog.identify(uid, {
+        $set: { email: email.trim(), name: fullName },
+        $set_once: { first_sign_up_date: new Date().toISOString() },
+      });
     }
   };
 
@@ -134,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    posthog.reset();
     if (isGuest) {
       await endGuest();
       setIsGuest(false);

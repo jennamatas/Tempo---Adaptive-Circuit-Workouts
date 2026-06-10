@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, phaseColor } from './lib/theme';
 import { RingTimer } from './components/RingTimer';
 import { Button } from './components/ui';
+import { Animated, useFloat } from './components/Motion';
 import { getActiveWorkout } from './lib/activeWorkout';
 import { estimateCalories } from './lib/generate';
 import { getBodyWeight } from './lib/store';
@@ -17,6 +18,7 @@ import { addLocalSession } from './lib/local';
 import { brand } from './lib/brand';
 import { GeneratedWorkout, SessionRow } from './lib/types';
 import { useAuth } from './lib/auth';
+import { usePostHog } from 'posthog-react-native';
 
 type Phase = 'ready' | 'work' | 'rest' | 'done';
 
@@ -33,10 +35,12 @@ function buzz(kind: 'tick' | 'transition' | 'finish') {
 
 export default function Session() {
   const { userId, isGuest } = useAuth();
+  const posthog = usePostHog();
   const workout = getActiveWorkout();
 
   // Keep the screen awake for the duration of the circuit.
   useKeepAwake();
+  const floatStyle = useFloat(8, 2200);
 
   const [phase, setPhase] = useState<Phase>('ready');
   const [round, setRound] = useState(1);
@@ -201,16 +205,35 @@ export default function Session() {
       }
     } catch (e) {
       // Network or unexpected failure — still show the summary, but tell the user.
+      posthog.captureException(e instanceof Error ? e : new Error('Session save failed'));
       setSaveError(true);
     }
+    posthog.capture('workout_completed', {
+      phase: workout.phase,
+      rounds: workout.rounds,
+      total_reps: totalReps,
+      duration_seconds: durationSeconds,
+      calories_estimate: caloriesEstimate,
+      is_guest: isGuest,
+      save_error: saveError,
+    });
     setSaving(false);
-  }, [workout, total, userId, isGuest]);
+  }, [workout, total, userId, isGuest, posthog, saveError]);
 
 
   const quit = () => {
     Alert.alert('Quit workout?', 'Your progress will not be saved.', [
       { text: 'Keep going', style: 'cancel' },
-      { text: 'Quit', style: 'destructive', onPress: () => router.back() },
+      {
+        text: 'Quit', style: 'destructive', onPress: () => {
+          posthog.capture('workout_quit', {
+            phase: workout?.phase ?? null,
+            round_at_quit: round,
+            exercise_index_at_quit: exIndex,
+          });
+          router.back();
+        },
+      },
     ]);
   };
 
@@ -291,7 +314,9 @@ export default function Session() {
         ) : phase === 'work' ? (
           <>
             {currentEx?.exercise.image_url ? (
-              <Image source={{ uri: currentEx.exercise.image_url }} style={{ width: 120, height: 120, borderRadius: radius.lg, marginBottom: 16 }} />
+              <Animated.View style={floatStyle}>
+                <Image source={{ uri: currentEx.exercise.image_url }} style={{ width: 120, height: 120, borderRadius: radius.lg, marginBottom: 16 }} transition={300} />
+              </Animated.View>
             ) : null}
             <Text style={{ color: colors.foreground, fontSize: 24, fontWeight: '700', marginBottom: 4, textAlign: 'center' }}>
               {currentEx?.exercise.name}

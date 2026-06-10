@@ -8,6 +8,7 @@ import { Card, Button } from './components/ui';
 import { supabase } from './lib/supabase';
 import { useAuth } from './lib/auth';
 import { Level, setBodyWeight } from './lib/store';
+import { usePostHog } from 'posthog-react-native';
 
 const LEVELS: { key: Level; label: string; desc: string }[] = [
   { key: 'beginner', label: 'Beginner', desc: 'New to training. 30s on / 30s off.' },
@@ -17,6 +18,7 @@ const LEVELS: { key: Level; label: string; desc: string }[] = [
 
 export default function Onboarding() {
   const { userId, refreshProfile } = useAuth();
+  const posthog = usePostHog();
   const [level, setLevel] = useState<Level>('intermediate');
   const [weight, setWeight] = useState('75');
   const [goal, setGoal] = useState(3);
@@ -37,6 +39,10 @@ export default function Onboarding() {
       })
       .eq('id', userId);
     await refreshProfile();
+    posthog.capture('onboarding_completed', {
+      fitness_level: level,
+      weekly_goal: goal,
+    });
     setSaving(false);
     router.replace('/(tabs)');
   };

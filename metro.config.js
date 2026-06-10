@@ -17,6 +17,13 @@ config.resolver.disableHierarchicalLookup = true;
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   '@supabase/node-fetch': path.resolve(__dirname, 'shims', 'node-fetch.js'),
+  // disableHierarchicalLookup (below) forces bare `semver` imports to the
+  // hoisted root copy, which is v6 and lacks the `functions/*` subpath exports
+  // that react-native-reanimated's worklet-version check imports. Pin to the
+  // v7 copy so static web export can resolve `semver/functions/satisfies`.
+  semver: path.dirname(require.resolve('semver/package.json', {
+    paths: [path.resolve(__dirname, 'node_modules', 'react-native-reanimated')],
+  })),
 };
 
 // Clear Metro transform cache on each build

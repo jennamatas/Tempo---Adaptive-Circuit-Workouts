@@ -13,6 +13,7 @@ import { fetchSessions } from '../lib/queries';
 import { setActiveWorkout } from '../lib/activeWorkout';
 import { GeneratedWorkout } from '../lib/types';
 import { useAuth } from '../lib/auth';
+import { usePostHog } from 'posthog-react-native';
 
 const LEVELS: { key: Level; label: string; desc: string }[] = [
   { key: 'beginner', label: 'Beginner', desc: 'Foundation · 30s on / 30s off' },
@@ -22,9 +23,11 @@ const LEVELS: { key: Level; label: string; desc: string }[] = [
 
 export default function WorkoutScreen() {
   const { userId, isGuest, profile } = useAuth();
+  const posthog = usePostHog();
   const [level, setLevel] = useLevel();
   const [workout, setWorkout] = useState<GeneratedWorkout | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isRegenerate, setIsRegenerate] = useState(false);
 
   // Default the selector to the user's profile level
   useEffect(() => {
@@ -32,8 +35,9 @@ export default function WorkoutScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.fitness_level]);
 
-  const generate = async (lv: Level) => {
+  const generate = async (lv: Level, regenerate = false) => {
     setLoading(true);
+    setIsRegenerate(regenerate);
     const phase = levelToPhase[lv];
     let exclude: string[] = [];
     try {
@@ -42,13 +46,25 @@ export default function WorkoutScreen() {
     } catch {}
     const w = await generateWorkout(phase, Date.now(), exclude);
     setWorkout(w);
+    if (regenerate) {
+      posthog.capture('circuit_regenerated', { level: lv, phase });
+    } else {
+      posthog.capture('circuit_generated', { level: lv, phase });
+    }
     setLoading(false);
   };
-
 
   const start = () => {
     if (!workout) return;
     setActiveWorkout(workout);
+    posthog.capture('circuit_started', {
+      level,
+      phase: workout.phase,
+      exercises: workout.exercises.length,
+      rounds: workout.rounds,
+      work_seconds: workout.work,
+      rest_seconds: workout.rest,
+    });
     router.push('/session');
   };
 
@@ -153,7 +169,7 @@ export default function WorkoutScreen() {
               label="Regenerate"
               variant="outline"
               icon={<Ionicons name="refresh" size={18} color={colors.foreground} />}
-              onPress={() => generate(level)}
+              onPress={() => generate(level, true)}
               loading={loading}
               style={{ marginTop: 10 }}
             />

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius, centeredContent } from '../lib/theme';
 import { Card, Button, StatCard } from '../components/ui';
 import { useAuth } from '../lib/auth';
+import { usePostHog } from 'posthog-react-native';
 import { supabase } from '../lib/supabase';
 import { fetchSessions } from '../lib/queries';
 import { saveLocalProfile } from '../lib/local';
@@ -15,6 +16,7 @@ const LEVELS: Level[] = ['beginner', 'intermediate', 'advanced'];
 
 export default function Profile() {
   const { profile, userId, isGuest, signOut, refreshProfile } = useAuth();
+  const posthog = usePostHog();
   const [totals, setTotals] = useState({ workouts: 0, reps: 0, minutes: 0 });
   const [editing, setEditing] = useState(false);
   const [weight, setWeight] = useState(String(profile?.body_weight_kg ?? 75));
@@ -47,6 +49,7 @@ export default function Profile() {
       await supabase.from('profiles').update({ body_weight_kg: bw, fitness_level: level }).eq('id', userId);
     }
     await refreshProfile();
+    posthog.capture('profile_updated', { fitness_level: level, is_guest: isGuest });
     setSaving(false);
     setEditing(false);
   };
@@ -61,6 +64,7 @@ export default function Profile() {
           text: isGuest ? 'Exit' : 'Sign out',
           style: 'destructive',
           onPress: async () => {
+            posthog.capture('signed_out', { was_guest: isGuest });
             await signOut();
             router.replace('/welcome');
           },
@@ -158,7 +162,10 @@ export default function Profile() {
             <Text style={{ color: colors.mutedForeground, fontSize: 13, lineHeight: 19 }}>
               Create a free account to sync your workouts across devices and keep your history safe.
             </Text>
-            <Button label="Create free account" onPress={() => router.push('/auth?mode=signup')} />
+            <Button label="Create free account" onPress={() => {
+              posthog.capture('guest_upgrade_tapped');
+              router.push('/auth?mode=signup');
+            }} />
           </Card>
         )}
 

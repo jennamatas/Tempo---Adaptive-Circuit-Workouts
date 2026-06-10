@@ -6,12 +6,16 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, radius } from '../lib/theme';
 import { PhaseBadge } from '../components/ui';
+import { Animated, useKenBurns } from '../components/Motion';
 import { supabase } from '../lib/supabase';
 import { Exercise } from '../lib/types';
+import { usePostHog } from 'posthog-react-native';
 
 export default function ExerciseDetail() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
+  const posthog = usePostHog();
   const [ex, setEx] = useState<Exercise | null>(null);
+  const kenBurns = useKenBurns(1.05, 1.18, 9000);
 
   useEffect(() => {
     if (!slug) return;
@@ -20,8 +24,18 @@ export default function ExerciseDetail() {
       .select('*')
       .eq('slug', slug)
       .single()
-      .then(({ data }) => setEx(data as Exercise));
-  }, [slug]);
+      .then(({ data }) => {
+        const exercise = data as Exercise;
+        setEx(exercise);
+        if (exercise) {
+          posthog.capture('exercise_viewed', {
+            exercise_name: exercise.name,
+            body_part: exercise.body_part,
+            phase: exercise.phase,
+          });
+        }
+      });
+  }, [slug, posthog]);
 
   if (!ex) {
     return (
@@ -34,8 +48,12 @@ export default function ExerciseDetail() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={{ position: 'relative' }}>
-          {ex.image_url ? <Image source={{ uri: ex.image_url }} style={{ width: '100%', height: 280 }} /> : null}
+        <View style={{ position: 'relative', overflow: 'hidden' }}>
+          {ex.image_url ? (
+            <Animated.View style={kenBurns}>
+              <Image source={{ uri: ex.image_url }} style={{ width: '100%', height: 280 }} transition={400} />
+            </Animated.View>
+          ) : null}
           <Pressable
             onPress={() => router.back()}
             style={{ position: 'absolute', top: 12, left: 16, width: 40, height: 40, borderRadius: 20, backgroundColor: '#000a', alignItems: 'center', justifyContent: 'center' }}
