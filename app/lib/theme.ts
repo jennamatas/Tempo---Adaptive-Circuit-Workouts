@@ -39,12 +39,28 @@ export const fonts = {
   body: 'System',
 };
 
-// Centers screen content within a comfortable column on wide (desktop/tablet)
-// viewports while staying full-width on phones. Spread into a ScrollView's
-// contentContainerStyle.
-export const screenMaxWidth = 720;
+// Breakpoint at which the app switches to its desktop layout (left sidebar nav,
+// multi-column content). Matches the bottom-tab → sidebar switch in NavBar.
+export const desktopBreakpoint = 768;
+
+// Centers screen content within a comfortable column on wide viewports while
+// staying full-width on phones. Spread into a ScrollView's contentContainerStyle.
+// - centeredContent: single-column reading width (lists, forms-in-app)
+// - centeredWide:    wider column for multi-column screens (dashboard, library)
+// - centeredForm:    narrow column for auth forms
+export const screenMaxWidth = 760;
 export const centeredContent = {
   width: '100%',
   maxWidth: screenMaxWidth,
+  alignSelf: 'center',
+} as const;
+export const centeredWide = {
+  width: '100%',
+  maxWidth: 1040,
+  alignSelf: 'center',
+} as const;
+export const centeredForm = {
+  width: '100%',
+  maxWidth: 480,
   alignSelf: 'center',
 } as const;

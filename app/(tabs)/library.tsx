@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, radius, centeredContent } from '../lib/theme';
+import { colors, spacing, radius, centeredWide, desktopBreakpoint } from '../lib/theme';
 import { PhaseBadge } from '../components/ui';
 import { supabase } from '../lib/supabase';
 import { Exercise } from '../lib/types';
@@ -15,6 +15,10 @@ export default function Library() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [query, setQuery] = useState('');
   const [bp, setBp] = useState('All');
+
+  const { width } = useWindowDimensions();
+  const cols = width >= 1180 ? 4 : width >= desktopBreakpoint ? 3 : 2;
+  const cardWidth = cols === 4 ? '23.5%' : cols === 3 ? '31.5%' : '48.5%';
 
   useEffect(() => {
     supabase
@@ -33,7 +37,7 @@ export default function Library() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <ScrollView contentContainerStyle={[{ padding: spacing.lg, paddingBottom: 40 }, centeredContent]}>
+      <ScrollView contentContainerStyle={[{ padding: spacing.lg, paddingBottom: 40 }, centeredWide]}>
         <Text style={{ color: colors.foreground, fontSize: 28, fontWeight: '700' }}>Exercise library</Text>
         <Text style={{ color: colors.mutedForeground, fontSize: 15, marginTop: 4 }}>{exercises.length} moves</Text>
 
@@ -77,7 +81,7 @@ export default function Library() {
         {/* Grid */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: spacing.lg }}>
           {filtered.map((e) => (
-            <Pressable key={e.id} onPress={() => router.push(`/exercise/${e.slug}`)} style={{ width: '48.5%', marginBottom: 14 }}>
+            <Pressable key={e.id} onPress={() => router.push(`/exercise/${e.slug}`)} style={{ width: cardWidth, marginBottom: 14 }}>
               <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }}>
                 {e.image_url ? (
                   <Image source={{ uri: e.image_url }} style={{ width: '100%', height: 110 }} />
